@@ -58,9 +58,9 @@ app.include_router(payment)  # 挂上付款路由
 @app.get("/")  # 注册一个 GET 接口，路径是根路径 /
 def start():  # 有人访问 / 时，执行这个函数
     # __file__ = 当前 main.py 的完整路径；.parent = 它所在的文件夹（D:\py_920）；再拼 index.html
-    return FileResponse(Path(__file__).parent / "index.html")  # 把 index.html 文件返回给浏览器
+    return FileResponse(Path(__file__).parent / "static" / "index.html") # 把 index.html 文件返回给浏览器
 
 
 @app.get("/tb_16x16.ico")  # 注册 GET 接口，路径是网站小图标的地址
 def favicon():  # 浏览器来要小图标时，执行这个函数
-    return FileResponse(Path(__file__).parent / "tb_16x16.ico")  # 把 ico 图标文件返回给浏览器
+    return FileResponse(Path(__file__).parent / "static" / "tb_16x16.ico") # 把 ico 图标文件返回给浏览器
