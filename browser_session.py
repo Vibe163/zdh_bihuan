@@ -7,10 +7,18 @@ import os
 from datetime import datetime
 
 
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait,Select
 from selenium.webdriver.support import expected_conditions as EC
 
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, WebDriverException
+class VerifyCodeError(Exception):
+    """验证码错误：浏览器保留，允许重填"""
+    pass
+
+
+class LoginFailError(Exception):
+    """登录失败：账号或密码错误，浏览器保留、允许重试"""
+    pass
 
 
 
@@ -36,6 +44,22 @@ class Browser:
         )
         self.driver.maximize_window()  # 浏览器全屏
         self.actions = ActionChains(self.driver) # ActionChains 是一个 "键盘鼠标动作的遥控器"。这一行是给当前浏览器配一个遥控器
+        self.driver.set_page_load_timeout(30)
+        self.payment_started = False  # 是否已走到付款二维码页（防重复结账）
+
+
+
+    # 打开页面（带重试）：代理链路偶发 net::ERR_CONNECTION_CLOSED，重试即可恢复
+    def get_page(self, url, tries=3):
+        for i in range(tries):
+            try:
+                self.driver.get(url)
+                return
+            except WebDriverException as e:
+                if i == tries - 1:
+                    raise
+                print(f"打开页面失败，2秒后重试（第{i + 1}次）：{str(e)[:120]}", flush=True)
+                time.sleep(2)
 
 
 
@@ -43,33 +67,57 @@ class Browser:
     def open_register_page(self):
         time.sleep(1.2)
         target_url = "https://xn--4gq62f52gdss.com/#/register"
-        self.driver.get(target_url)
+        self.get_page(target_url)
 
-    def fill_email_and_pwd(self, email, password):
-        # 邮箱输入框（你原来的代码不动）
-        time.sleep(5)
-        email_xpath = '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[1]/input'
-        email_input = WebDriverWait(self.driver, 30).until(
-            EC.presence_of_element_located((By.XPATH, email_xpath))
+    # def fill_email_and_pwd(self, email, password):
+    #     # 邮箱输入框（你原来的代码不动）
+    #     time.sleep(5)
+    #     email_xpath = '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[1]/input'
+    #     email_input = WebDriverWait(self.driver, 30).until(
+    #         EC.presence_of_element_located((By.XPATH, email_xpath))
+    #     )
+    #     email_input.send_keys(email)
+    #
+    #     # 密码框
+    #     time.sleep(1.2)
+    #     pwd1_xpath = '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[3]/input'
+    #     pwd1_input = WebDriverWait(self.driver, 30).until(
+    #         EC.presence_of_element_located((By.XPATH, pwd1_xpath))
+    #     )
+    #     pwd1_input.send_keys(password)
+    #
+    #     # 确认密码框
+    #     time.sleep(1.2)
+    #     pwd2 = self.driver.find_element(By.XPATH,'//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[4]/input')
+    #     pwd2.send_keys(password)
+    def fill_email_and_pwd(self, username, email_suffix, password):
+        # 等邮箱用户名输入框出现（注册表单动态渲染，要10~20秒，必须等、不能直接找）
+        username_input = WebDriverWait(self.driver, 30).until(
+            EC.presence_of_element_located(
+                (By.XPATH, '//input[@placeholder="邮箱"]')
+            )
         )
-        email_input.send_keys(email)
+        username_input.send_keys(username)
 
-        # 密码框
-        time.sleep(1.2)
-        pwd1_xpath = '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[3]/input'
-        pwd1_input = WebDriverWait(self.driver, 30).until(
-            EC.presence_of_element_located((By.XPATH, pwd1_xpath))
+        # 等后缀下拉出现，再选（原生 select，按显示文字选，如 "@qq.com"）
+        suffix_select = Select(
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.XPATH, '//select[contains(@class,"form-control-alt")]')
+                )
+            )
         )
-        pwd1_input.send_keys(password)
+        suffix_select.select_by_visible_text(email_suffix)
 
-        # 确认密码框
-        time.sleep(1.2)
-        pwd2 = self.driver.find_element(By.XPATH,'//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[4]/input')
-        pwd2.send_keys(password)
+        # 填密码、确认密码（沿用你原来测试通过的定位，不改动）
+        self.driver.find_element(By.XPATH, '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[3]/input').send_keys(password)
+        self.driver.find_element(By.XPATH, '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[4]/input').send_keys(password)
+
+
 
     def click_verify_button(self):
         # 点击发送按钮
-        time.sleep(1.2)
+        time.sleep(3)
         get_code_btn = self.driver.find_element(By.XPATH,
                                            '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[2]/div[2]/button')
         get_code_btn.click()
@@ -81,45 +129,96 @@ class Browser:
         # ================================================
 
 
-    def enter_verify_and_click(self,num):
-        # 输入验证码
-        yzm_btn = self.driver.find_element(By.XPATH,
-                                      '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[2]/div[1]/input')
-        yzm_btn.send_keys(num)
+    # def enter_verify_and_click(self,num):
+    #     # 输入验证码
+    #     yzm_btn = self.driver.find_element(By.XPATH,
+    #                                   '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[2]/div[1]/input')
+    #     yzm_btn.send_keys(num)
+    #
+    #     # 注册按钮
+    #     time.sleep(2)
+    #     register_btn = self.driver.find_element(By.XPATH,
+    #                                        '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[6]/button/span/i')
+    #     register_btn.click()
+    #
+    #     # 利用键盘实现自动点击
+    #     time.sleep(12)
+    #     self.actions.send_keys(Keys.TAB).perform()
+    #     time.sleep(1.5)
+    #     self.actions.send_keys(Keys.SPACE).perform()
+
+
+    def enter_verify_and_click(self, num):
+        # 验证码框，重填前先清空
+        yzm_input = self.driver.find_element(
+            By.XPATH,
+            '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[2]/div[1]/input')
+        yzm_input.clear()
+        yzm_input.send_keys(num)
 
         # 注册按钮
         time.sleep(2)
-        register_btn = self.driver.find_element(By.XPATH,
-                                           '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[6]/button/span/i')
+        register_btn = self.driver.find_element(
+            By.XPATH,
+            '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/div[6]/button/span/i')
         register_btn.click()
 
-        # 利用键盘实现自动点击
-        time.sleep(10)
+        # 键盘过 CF
+        time.sleep(12)
         self.actions.send_keys(Keys.TAB).perform()
         time.sleep(1.5)
         self.actions.send_keys(Keys.SPACE).perform()
+
+        # 等成功标志 sidebar：出现=成功，等不到=验证码错，贴红标签
+        try:
+            WebDriverWait(self.driver, 20).until(
+                EC.presence_of_element_located((By.XPATH, '//*[@id="sidebar"]'))
+            )
+        except TimeoutException:
+            raise VerifyCodeError("验证码错误，请重新输入")
+
 
 
 
 
     #登录模块—————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+    def is_alive(self):
+        # 试着取当前网址，取不到说明浏览器已关闭或断开
+        try:
+            _ = self.driver.current_url
+            return True
+        except Exception:
+            return False
+
+    def is_logged_in(self):
+        # 判断当前是否已进入仪表盘：sidebar 或 page-header 任一存在，就是已登录
+        for xpath in ['//nav[@id="sidebar"]', '//header[@id="page-header"]']:
+            try:
+                if self.driver.find_element(By.XPATH, xpath):
+                    return True
+            except Exception:
+                pass  # 这个没找到，看下一个
+        return False
+
     def open_login_page(self):
         time.sleep(1.2)
         target_url = "https://xn--4gq62f52gdss.com/#/login"  # 登录页面
-        self.driver.get(target_url)
+        self.get_page(target_url)
 
     def login_email_password(self, email, password):
-        # 等邮箱输入框出现：登录表单是动态渲染的，不能写死 sleep 赌时机
-        login_email = WebDriverWait(self.driver, 15).until(
+        # 等邮箱输入框出现：登录表单是动态渲染的，不能写死 sleep 赌时机（实测要 10~20 秒，放宽到 30）
+        login_email = WebDriverWait(self.driver, 30).until(
             EC.presence_of_element_located(
                 (By.XPATH, '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[2]/input'))
         )
+        login_email.clear()          # 重试时先清空旧内容，再填
         login_email.send_keys(email)
         # 密码框
         login_pass = WebDriverWait(self.driver, 10).until(
             EC.presence_of_element_located(
                 (By.XPATH, '//*[@id="main-container"]/div[2]/div/div/div/div[1]/div/div/div[3]/input'))
         )
+        login_pass.clear()           # 重试时先清空旧密码，再填
         login_pass.send_keys(password)
         # 登录按钮，等它可以点击
         login_click = WebDriverWait(self.driver, 10).until(
@@ -128,13 +227,24 @@ class Browser:
         )
         login_click.click()
 
-        # 判断登录是否成功：登录成功后才有侧边栏 sidebar
+        # 判断登录是否成功：sidebar 或 page-header 任一出现即成功，最多等20秒
+        def login_success(driver):
+            # 逐个看两个核心元素，找到任意一个就返回 True
+            for xpath in ['//nav[@id="sidebar"]', '//header[@id="page-header"]']:
+                try:
+                    if driver.find_element(By.XPATH, xpath):
+                        return True
+                except Exception:
+                    pass  # 这个没找到，接着看下一个
+            return False  # 两个都没找到，返回 False、继续等
+
         try:
-            WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="sidebar"]'))
-            )
+            WebDriverWait(self.driver, 5).until(login_success)
         except TimeoutException:
-            raise Exception("账号或密码错误，登录后页面未出现")
+            # 失败后立刻清空两个框，让浏览器停在空框状态、等用户重填
+            login_email.clear()
+            login_pass.clear()
+            raise LoginFailError("登录未成功")
 
     #付款模块——————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
     def payment_one(self):
@@ -150,13 +260,18 @@ class Browser:
         time.sleep(2)
         self.driver.find_element(By.XPATH, '//*[@id="main-container"]/div/div[2]/div[2]/a/div[2]/div/p[1]').click()
 
+    # def payment_three(self):
+    #     # 点击下单
+    #     time.sleep(2)
+    #     self.driver.find_element(By.XPATH, '//*[@id="cashier"]/div[2]/div[2]/button').click()
+    #     # 点击确定取消
+    #     time.sleep(2)
+    #     self.driver.find_element(By.XPATH, '/html/body/div[3]/div/div[2]/div/div[2]/div/div/div[2]/button[2]').click()
+
     def payment_three(self):
         # 点击下单
         time.sleep(2)
         self.driver.find_element(By.XPATH, '//*[@id="cashier"]/div[2]/div[2]/button').click()
-        # 点击确定取消
-        time.sleep(2)
-        self.driver.find_element(By.XPATH, '/html/body/div[3]/div/div[2]/div/div[2]/div/div/div[2]/button[2]').click()
 
     def payment_four(self):
         # 选择微信支付
@@ -184,19 +299,20 @@ class Browser:
         time.sleep(1.5)
 
     def payment_six(self):
-        # 浏览器返回
-        self.driver.back()
-        time.sleep(1)
+        # # 浏览器返回
+        # self.driver.back()
+        # time.sleep(1)
+
         # 点击仪表盘
         self.driver.find_element(By.XPATH, '//*[@id="sidebar"]/div[2]/ul/li[1]/a').click()
-        time.sleep(1.5)
+        time.sleep(3)
 
         # 关闭提示弹窗,等待弹窗完全渲染好，挡住按钮的元素消失
         self.driver.find_element(By.XPATH, '//button[@aria-label="Close"]').click()
         time.sleep(1)
 
         # 点击一键订阅
-        self.driver.find_element(By.XPATH, '/html/body/div[1]/div/main/div/div[3]/div[2]/div/div[2]/div/div/div[2]').click()
+        self.driver.find_element(By.XPATH, '//*[@id="main-container"]/div/div[2]/div[2]/div/div[2]/div/div/div[2]/div[1]').click()
         time.sleep(1.5)
 
         hook_js = """

@@ -12,3 +12,12 @@ chrome_profile/
 # IDE
 .idea/
 .vscode/
+
+# 环境变量（含密码，不提交）
+.env
+
+# 日志目录（运行时生成，不提交）
+logs/
+
+# pytest 缓存
+.pytest_cache/

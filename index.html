@@ -1,103 +1,12 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>注册 + 轮询 演示</title>
-<style>
-  body { font-family: "Microsoft YaHei", sans-serif; max-width: 760px; margin: 24px auto; padding: 0 16px; color:#222; }
-  button { padding: 8px 18px; margin: 6px 6px 6px 0; cursor: pointer; }
-  input { padding: 6px; margin: 4px; }
-  #log { background:#f5f5f5; border:1px solid #ddd; padding:12px; height:320px; overflow:auto;
-         font-family: Consolas, monospace; font-size:13px; white-space:pre-wrap; line-height:1.6; }
-  .big { font-size:22px; font-weight:bold; color:#0a7; }
-  .hint { color:#888; font-size:13px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一元机场自动化前端</title>
+    <link rel="icon" href="/tb_16x16.ico">
 </head>
 <body>
-  <h2>自动化注册 + 前端轮询 演示</h2>
-
-  <div>
-    邮箱：<input id="email" value="2995179799">
-    密码：<input id="password" value="ooolll666">
-  </div>
-
-  <p>
-    <button onclick="createSession()">第1步：创建会话（接口1）</button>
-    <button id="btn2" onclick="startRegister()">第2步：提交注册（接口2 + 自动轮询）</button>
-  </p>
-
-  <p>当前 session_id：<span id="sid">还没创建</span></p>
-  <p class="big">最新状态：<span id="status">—</span></p>
-
-  <p class="hint">下面日志会实时打印每次轮询查到的状态。浏览器在后台填表单约10秒，期间状态是 init，填完变 filling；如果出错变 register_fail。无论成功还是失败，轮询都会自动停止。</p>
-  <div id="log"></div>
-
-<script>
-const API = "";  // 空字符串=用当前页面的地址（同源），换端口/换主机都不用改
-let sessionId = null;
-let timer = null;
-let count = 0;
-
-function log(msg) {
-  const t = new Date().toLocaleTimeString();
-  document.getElementById("log").textContent += "[" + t + "] " + msg + "\n";
-}
-function setStatus(s) { document.getElementById("status").textContent = s; }
-
-// 接口1：创建会话
-async function createSession() {
-  const res = await fetch(API + "/register/one", { method: "POST" });
-  const data = await res.json();
-  sessionId = data.session_id;
-  document.getElementById("sid").textContent = sessionId;
-  setStatus("init");
-  log("接口1返回，拿到 session_id=" + sessionId);
-}
-
-// 接口2：提交注册，同时开始轮询
-async function startRegister() {
-  if (!sessionId) { alert("请先点第1步创建会话"); return; }
-  const btn2 = document.getElementById("btn2");
-  btn2.disabled = true;  // 立刻禁用，防止重复点击开出两个浏览器
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  count = 0;
-  log("正在打开浏览器，约需10~20秒，请耐心等待，不要重复点击...");
-
-  // 发接口2，但不在这里干等，让它在后台跑
-  fetch(API + "/register/two", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({session_id: sessionId, email: email, password: password})
-  }).then(r => r.json())
-    .then(d => log("★ 接口2返回了：" + JSON.stringify(d)))
-    .catch(err => { log("网络出错：" + err); btn2.disabled = false; });  // 出错恢复按钮，可重试
-
-  // 立刻开始每 1.5 秒轮询一次
-  timer = setInterval(poll, 1500);
-}
-
-// 一次轮询
-async function poll() {
-  count++;
-  const res = await fetch(API + "/register/polling?session_id=" + sessionId);
-  const data = await res.json();
-  setStatus(data.status);
-  log("第" + count + "次轮询 → 状态=" + data.status);
-
-  // 成功终点：查到 filling，说明浏览器填完了，停止轮询
-  if (data.status === "filling") {
-    clearInterval(timer);
-    log("✅ 查到 filling，浏览器已填完表单，停止轮询。真实项目在这里切换到下一步界面。");
-  }
-
-  // 失败终点：查到 register_fail，停止轮询，并把失败原因显示出来
-  if (data.status === "register_fail") {
-    clearInterval(timer);
-    document.getElementById("btn2").disabled = false;  // 失败恢复按钮，可以重试
-    log("❌ 查到 register_fail，注册失败，停止轮询。失败原因：" + data.error_msg);
-  }
-}
-</script>
+    <button>111</button>
 </body>
 </html>
