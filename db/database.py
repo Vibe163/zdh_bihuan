@@ -1,6 +1,6 @@
 from sqlmodel import create_engine,Session,SQLModel,select # 拿到数据库的连接入口，后面所有数据库操作都要靠它
-from model import Register
-from config import settings
+from db.models import Register
+from core.config import settings
 
 # # ========== 数据库连接信息 ==========
 # USER = "root"        # mysql账号

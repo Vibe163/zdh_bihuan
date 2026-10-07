@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-from database import get_db
+from db.database import get_db
 from main import app
 
 

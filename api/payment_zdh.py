@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from session_manager import manager
+from automation.session_manager import manager
 from core.response import success_response
 from core.common import CreateSession,short_error,translate_error
 from core.security import verify_admin_token

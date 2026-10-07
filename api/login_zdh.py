@@ -2,8 +2,8 @@ import uuid
 
 from fastapi import APIRouter,HTTPException
 from pydantic import BaseModel, Field
-from browser_session import Browser, LoginFailError
-from session_manager import manager
+from automation.browser_session import Browser, LoginFailError
+from automation.session_manager import manager
 
 from core.response import success_response
 from core.common import translate_error

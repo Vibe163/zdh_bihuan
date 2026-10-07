@@ -8,20 +8,20 @@ from fastapi.middleware.cors import CORSMiddleware  # 导入跨域中间件：�
 from fastapi.responses import FileResponse  # 导入文件响应：把 HTML、图标这种文件返回给浏览器
 from starlette.exceptions import HTTPException as StarletteHTTPException  # 导入 HTTP 异常（400/404），起别名防重名
 
-from database import create_db_and_tables, reset_stuck_tasks  # 导入建表和重启恢复函数：启动时调用
+from db.database import create_db_and_tables, reset_stuck_tasks  # 导入建表和重启恢复函数：启动时调用
 from core.exception_handler import (  # 从异常处理模块，一次导入三个处理器
     http_exception_handler,  # 处理器一：管你主动抛出的 HTTP 异常（400、404）
     validation_exception_handler,  # 处理器二：管参数校验失败（422）
     global_exception_handler,  # 处理器三：兜底，管所有没料到的崩溃（500）
 )
 from core.logger import setup_logging  # 导入日志配置函数：启动时调用一次
-from router.register import router as register  # 导入注册模块的路由，起名 register
-from router.login import router as login  # 导入登录模块的路由，起名 login
-from router.Payment import router as payment  # 导入付款模块的路由，起名 payment
+from api.register_zdh import router as register  # 导入注册模块的路由，起名 register
+from api.login_zdh import router as login  # 导入登录模块的路由，起名 login
+from api.payment_zdh import router as payment  # 导入付款模块的路由，起名 payment
 
-from session_manager import manager
+from automation.session_manager import manager
 
-from config import settings
+from core.config import settings
 
 # 配置日志：控制台 + 文件双输出，文件按天轮转（全量留15天、错误留30天）
 setup_logging()

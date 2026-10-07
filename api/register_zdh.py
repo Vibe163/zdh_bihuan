@@ -1,12 +1,12 @@
 from fastapi import APIRouter,Depends,HTTPException
 from sqlmodel import Session,select
-from database import get_db
+from db.database import get_db
 from pydantic import BaseModel, Field
-from model import Register
+from db.models import Register
 import uuid
 
-from browser_session import Browser, VerifyCodeError
-from session_manager import manager
+from automation.browser_session import Browser, VerifyCodeError
+from automation.session_manager import manager
 from core.response import success_response
 from core.common import CreateSession,short_error,translate_error
 from core.crypto import encrypt_password

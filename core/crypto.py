@@ -1,5 +1,5 @@
 from cryptography.fernet import Fernet
-from config import settings
+from .config import settings
 
 
 # 用 .env 里的密钥构造加密器

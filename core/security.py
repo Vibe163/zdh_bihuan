@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import APIKeyHeader
 
-from config import settings
+from .config import settings
 
 # 密钥放在请求头 X-Token 里；auto_error=False，让我们自己返回中文提示
 admin_token_scheme = APIKeyHeader(name="X-Token", auto_error=False)
